@@ -24,6 +24,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating channel: %v", err)
 	}
+	_, _, err = pubsub.DeclareAndBind(connection, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug+".*", pubsub.SimpleQueueDurable)
+	if err != nil {
+		log.Fatalf("Error declaring and binding topic queue: %v", err)
+	}
 
 	gamelogic.PrintServerHelp()
 	for true {
