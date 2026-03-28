@@ -49,10 +49,13 @@ func SubscribeJSON[T any](
 			acktype := handler(val)
 			switch acktype {
 			case Ack:
+				fmt.Println("Ack")
 				msg.Ack(false)
 			case NackDiscard:
+				fmt.Println("NackDiscard")
 				msg.Nack(false, false)
 			case NackRequeue:
+				fmt.Println("NackRequeue")
 				msg.Nack(false, true)
 			}
 		}
@@ -71,13 +74,14 @@ func DeclareAndBind(
 	if err != nil {
 		return &amqp.Channel{}, amqp.Queue{}, err
 	}
+
 	queue, err := chn.QueueDeclare(
 		queueName,
 		queueType == SimpleQueueDurable,
 		queueType == SimpleQueueTransient,
 		queueType == SimpleQueueTransient,
 		false,
-		nil,
+		amqp.Table{"x-dead-letter-exchange": "peril_dlx"},
 	)
 	if err != nil {
 		return chn, amqp.Queue{}, err
