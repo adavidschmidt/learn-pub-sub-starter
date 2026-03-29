@@ -78,12 +78,11 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 	return func(move gamelogic.ArmyMove) pubsub.Acktype {
 		defer fmt.Print("> ")
 		moveOutcome := gs.HandleMove(move)
-		var acktype pubsub.Acktype
 		switch moveOutcome {
 		case gamelogic.MoveOutcomeSafe:
-			acktype = pubsub.Ack
+			return pubsub.Ack
 		case gamelogic.MoveOutcomeMakeWar:
-			pubsub.PublishJSON(
+			err := pubsub.PublishJSON(
 				ch,
 				routing.ExchangePerilTopic,
 				fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, gs.GetUsername()),
@@ -92,11 +91,12 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 					Defender: gs.GetPlayerSnap(),
 				},
 			)
-			acktype = pubsub.NackRequeue
-		default:
-			acktype = pubsub.NackDiscard
+			if err != nil {
+				return pubsub.NackRequeue
+			}
+			return pubsub.Ack
 		}
-		return acktype
+		return pubsub.NackDiscard
 	}
 }
 
