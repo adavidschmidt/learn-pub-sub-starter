@@ -28,7 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error declaring and binding topic queue: %v", err)
 	}
-
+	pubsub.SubscribeGob(connection, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.SimpleQueueDurable, handlerLogs())
 	gamelogic.PrintServerHelp()
 	for true {
 		inputs := gamelogic.GetInput()

@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 
@@ -88,4 +90,43 @@ func DeclareAndBind(
 		return chn, queue, err
 	}
 	return chn, queue, nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	queueType SimpleQueueType,
+	handler func(T) Acktype,
+) error {
+	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	if err != nil {
+		return err
+	}
+	msgs, err := ch.Consume(queue.Name, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for msg := range msgs {
+			var val T
+			decoder := gob.NewDecoder(bytes.NewReader(msg.Body))
+			err = decoder.Decode(&val)
+			if err != nil {
+				fmt.Printf("Could not decode msg: %v\n", err)
+				continue
+			}
+			ackType := handler(val)
+			switch ackType {
+			case Ack:
+				msg.Ack(false)
+			case NackDiscard:
+				msg.Nack(false, false)
+			case NackRequeue:
+				msg.Nack(false, true)
+			}
+		}
+	}()
+	return nil
 }
